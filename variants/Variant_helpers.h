@@ -5,9 +5,6 @@
 #include <stdexcept>
 
 namespace Ustd {
-  struct Inexhaustive_matching : std::logic_error {
-    Inexhaustive_matching(): logic_error("Matched variant not covered by passed functions") {}
-  };
   struct Unknown_tag : std::out_of_range {
     Unknown_tag(): out_of_range("Tag is out of range of valid variants") {}
   };
@@ -38,40 +35,42 @@ namespace Ustd {
     using Tag_t = typename T::Tag;
     T* pointer_;
 
-    template <Tag_t tag, typename Ret, typename F>
-    Ret try_all_funcs(F&& f)
+    template <Tag_t tag, typename F>
+    auto try_all_funcs(F&& f)
     {
       using Derived = copy_cv_t<T, decltype(T::get_type(std::integral_constant<Tag_t, tag>()))>;
       if constexpr (is_callable_v<F, void(Derived&)>) {
         return std::forward<F>(f)(static_cast<Derived&>(*pointer_));
       } else {
-        throw Inexhaustive_matching();
+        static_assert(false, "The matching was inexhaustive");
       }
     }
-    template <Tag_t tag, typename Ret, typename F, typename... Fs>
-    Ret try_all_funcs(F&& f, Fs&&... fs)
+    template <Tag_t tag, typename F, typename... Fs>
+    auto try_all_funcs(F&& f, Fs&&... fs)
     {
       using Derived = copy_cv_t<T, decltype(T::get_type(std::integral_constant<Tag_t, tag>()))>;
-      if constexpr (is_callable_v<F, void(Derived&)>)
-      {
+      if constexpr (is_callable_v<F, void(Derived&)>) {
         return std::forward<F>(f)(static_cast<Derived&>(*pointer_));
       } else {
-        return try_all_funcs<tag, Ret>(std::forward<Fs>(fs)...);
+        return try_all_funcs<tag>(std::forward<Fs>(fs)...);
       }
     }
 
-    template <Tag_t tag, typename Ret, typename... Fs>
-    Ret try_all(Fs&&... fs)
+    template <Tag_t tag, typename... Fs>
+    auto try_all(Fs&&... fs)
     {
-      if constexpr (tag < T::TAG_END)
-      {
+      if constexpr (tag < T::TAG_END - 1) {
         if (tag == pointer_->tag()) {
-          return try_all_funcs<tag, Ret>(std::forward<Fs>(fs)...);
+          return try_all_funcs<tag>(std::forward<Fs>(fs)...);
         } else {
-          return try_all<Tag_t(tag + 1), Ret>(std::forward<Fs>(fs)...);
+          return try_all<Tag_t(tag + 1)>(std::forward<Fs>(fs)...);
         }
       } else {
-        throw Unknown_tag();
+        if (tag == pointer_->tag()) {
+          return try_all_funcs<tag>(std::forward<Fs>(fs)...);
+        } else {
+          throw Unknown_tag();
+        }
       }
     }
   public:
@@ -80,8 +79,8 @@ namespace Ustd {
     template <typename... Fs>
     auto operator()(Fs&&... fs)
     {
-      using Return_type = common_return_type_t<Fs...>;
-      return try_all<T::TAG_BEGIN, Return_type>(std::forward<Fs>(fs)...);
+      //using Return_type = common_return_type_t<Fs...>;
+      return try_all<Tag_t(0)>(std::forward<Fs>(fs)...);
     }
   };
 
@@ -111,3 +110,14 @@ namespace Ustd {
   template <typename Derived, typename Base>
   Derived const* try_cast(Base const&&) = delete;
 }
+
+
+#define DEFINE_TAG_TYPE(...) enum Tag { __VA_ARGS__, TAG_END }; Tag tag() const { return tag_; }
+#define DEFINE_TAG(variant) static struct variant get_type(std::integral_constant<Tag, variant>)
+#define DEFINE_MAKE(class_name) \
+  template <typename Variant, typename... Ts>\
+  static std::unique_ptr<Variant> make(Ts&&... ts)\
+  {\
+    static_assert(std::is_base_of_v<class_name, Variant>, "make takes a derived Ast_node argument");\
+    return std::make_unique<Variant>(std::forward<Ts>(ts)...);\
+  }

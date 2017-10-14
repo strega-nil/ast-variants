@@ -1,31 +1,22 @@
-#ifndef VARIANT_AST_H
-#define VARIANT_AST_H
+#pragma once
 
 #include "Variant_helpers.h"
 
 #include <memory>
 #include <iostream>
 
+
 struct Int_literal;
 struct Plus;
 struct Ast_node {
-  enum Tag {
+  DEFINE_TAG_TYPE(
     Int_literal,
-    Plus,
-    TAG_END,
-    TAG_BEGIN = Int_literal,
-  };
-  auto tag() const { return tag_; }
+    Plus
+  );
+  DEFINE_TAG(Int_literal);
+  DEFINE_TAG(Plus);
 
-  static struct Int_literal get_type(std::integral_constant<Tag, Int_literal>);
-  static struct Plus get_type(std::integral_constant<Tag, Plus>);
-
-  template <typename Variant, typename... Ts>
-  static std::unique_ptr<Variant> make(Ts&&... ts)
-  {
-    static_assert(std::is_base_of_v<Ast_node, Variant>, "make takes a derived Ast_node argument");
-    return std::make_unique<Variant>(std::forward<Ts>(ts)...);
-  }
+  DEFINE_MAKE(Ast_node);
 
   virtual ~Ast_node() = 0 {}
 
@@ -33,6 +24,8 @@ protected:
   Tag tag_;
   Ast_node(Tag tag) : tag_(tag) {}
 };
+
+// TODO(ubsan): figure out how to make constructor definition easier
 
 struct Int_literal : Ast_node {
 public:
@@ -55,7 +48,3 @@ public:
 };
 
 int evaluate(Ast_node const&);
-
-
-
-#endif
