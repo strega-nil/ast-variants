@@ -42,11 +42,11 @@ namespace Ustd {
     Ret try_all_funcs(F&& f)
     {
       using Derived = copy_cv_t<T, decltype(T::get_type(std::integral_constant<Tag_t, tag>()))>;
-      //if constexpr (is_callable_v<F, void(Derived&)>) {
+      if constexpr (is_callable_v<F, void(Derived&)>) {
         return std::forward<F>(f)(static_cast<Derived&>(*pointer_));
-      //} else {
-        //throw Inexhaustive_matching();
-      //}
+      } else {
+        throw Inexhaustive_matching();
+      }
     }
     template <Tag_t tag, typename Ret, typename F, typename... Fs>
     Ret try_all_funcs(F&& f, Fs&&... fs)
