@@ -17,7 +17,7 @@ namespace impl {
     constexpr auto tag_end = static_cast<underlying>(T::TAG_END);
     return static_cast<underlying>(tag) < tag_end;
   }
-}
+} // namespace impl
 
 struct Unknown_tag : std::out_of_range {
   Unknown_tag() : out_of_range("Tag is out of range of valid variants") {}
@@ -50,31 +50,26 @@ class Matcher {
   auto try_all_funcs(F&& f) {
     using Derived = type_traits::copy_cv_t<
         T, decltype(T::get_type(std::integral_constant<Tag_t, tag>()))>;
-    // clang-format off
-    if constexpr(type_traits::is_callable_v<F, void(Derived&)>) {
+    if constexpr (type_traits::is_callable_v<F, void(Derived&)>) {
       return std::forward<F>(f)(static_cast<Derived&>(*pointer_));
     } else {
       static_assert(false, "The matching was inexhaustive");
     }
-    // clang-format on
   }
   template <Tag_t tag, typename F, typename... Fs>
   auto try_all_funcs(F&& f, Fs&&... fs) {
     using Derived = type_traits::copy_cv_t<
         T, decltype(T::get_type(std::integral_constant<Tag_t, tag>()))>;
-    // clang-format off
-    if constexpr(type_traits::is_callable_v<F, void(Derived&)>) {
+    if constexpr (type_traits::is_callable_v<F, void(Derived&)>) {
       return std::forward<F>(f)(static_cast<Derived&>(*pointer_));
     } else {
       return try_all_funcs<tag>(std::forward<Fs>(fs)...);
     }
-    // clang-format on
   }
 
   template <Tag_t tag, typename... Fs>
   auto try_all(Fs&&... fs) {
-    // clang-format off
-    if constexpr(impl::tag_valid(impl::tag_increment(tag))) {
+    if constexpr (impl::tag_valid(impl::tag_increment(tag))) {
       if (tag == pointer_->tag()) {
         return try_all_funcs<tag>(std::forward<Fs>(fs)...);
       } else {
@@ -87,7 +82,6 @@ class Matcher {
         std::abort();
       }
     }
-    // clang-format on
   }
 
 public:
@@ -120,7 +114,7 @@ template <typename Derived, typename Base>
 Derived* try_cast(Base&&) = delete;
 template <typename Derived, typename Base>
 Derived const* try_cast(Base const&&) = delete;
-}
+} // namespace ustd::variant
 
 #define variant_tags(...)                                                      \
   enum class Tag { __VA_ARGS__, TAG_END };                                     \
@@ -130,18 +124,18 @@ Derived const* try_cast(Base const&&) = delete;
   struct variant;                                                              \
   static struct variant get_type(std::integral_constant<Tag, Tag::variant>)
 
-#define variant_base(name, ...)                                                \
-  struct name {                                                                \
-    __VA_ARGS__                                                                \
-  public:                                                                      \
-    virtual ~name() = 0 {}                                                     \
-                                                                               \
-  protected:                                                                   \
-    Tag tag_;                                                                  \
-    name(Tag tag) : tag_(tag) {}                                               \
-  }
-#define variant_alternative(base, name, ...)                                   \
-  struct base::name : base {                                                   \
-    constexpr static auto variant_tag = base::Tag::name;                       \
-    __VA_ARGS__                                                                \
-  };
+#define variant_base(name)                                                     \
+  \
+public:                                                                        \
+  virtual ~name() {}                                                           \
+  \
+protected:                                                                     \
+  Tag tag_;                                                                    \
+  virtual void _variant_force_pure_virtual() = 0;                              \
+  \
+name(Tag tag)                                                                  \
+      : tag_(tag) {}
+
+#define variant_alternative(base, name)                                        \
+  constexpr static auto variant_tag = base::Tag::name;                         \
+  void _variant_force_pure_virtual() override {}

@@ -23,6 +23,9 @@ COMPILER_FLAGS = [
     "/std:c++latest",
     "/EHsc",
     "/nologo",
+    "/W4",
+    "/wd4100",
+    "/permissive-",
 ]
 LINKER_FLAGS = [
     "/LIBPATH:" + PATH_TO_TOOLS + "lib/x64/",
@@ -38,17 +41,31 @@ def main():
     """
     main function, to get pylint off my back about naming ;)
     """
-    compiler = PATH_TO_MSVC + "cl.exe"
-    linker = PATH_TO_MSVC + "link.exe"
     files = ["source/main.cpp", "source/ustd/utility.cpp"]
-    for file in files:
-        res = call([compiler, *COMPILER_FLAGS, file])
+    if True:
+        compiler = PATH_TO_MSVC + "cl.exe"
+        linker = PATH_TO_MSVC + "link.exe"
+        for file in files:
+            res = call([compiler, *COMPILER_FLAGS, file])
+            if res != 0:
+                exit(res)
+        obj_files = ["main.obj", "utility.obj"]
+        res = call([linker, *LINKER_FLAGS, *obj_files])
         if res != 0:
             exit(res)
-    obj_files = ["main.obj", "utility.obj"]
-    res = call([linker, *LINKER_FLAGS, *obj_files])
-    if res != 0:
-        exit(res)
+    else:
+        compat_flags = ["-Xclang", "-flto-visibility-public-std"]
+        lang_flags = ["-Iinclude", "-std=c++17", "-c"]
+        warning_flags = ["-Wall", "-Wextra", "-pedantic"]
+        for file in files:
+            res = call(
+                ["clang++", *compat_flags, *lang_flags, *warning_flags, file])
+            if res != 0:
+                exit(res)
+        obj_files = ["main.o", "utility.o"]
+        res = call(["clang++", *obj_files, "-o", "main.exe"])
+        if res != 0:
+            exit(res)
 
 
 if __name__ == "__main__":
