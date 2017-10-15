@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-namespace Ustd {
+namespace ustd::type_traits {
   template <typename F, typename T, typename Void = void>
   struct is_callable : std::false_type {};
 
@@ -16,6 +16,7 @@ namespace Ustd {
   template <typename F, typename T>
   constexpr static bool is_callable_v = is_callable<F, T>();
 
+  // TODO(ubsan): come up with a better name
   template <typename T>
   T declvalcat();
 
