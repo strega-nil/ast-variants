@@ -6,6 +6,7 @@ You might have to replace the path I use with your cl path
 ... hax
 """
 
+import os
 from subprocess import call
 
 PATH_TO_VS = "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/"
@@ -52,7 +53,9 @@ def main():
     main function, to get pylint off my back about naming ;)
     """
     files = ["source/main.cpp", "source/ustd/utility.cpp"]
-    if False:
+    if not os.path.exists("build"):
+        os.makedirs("build")
+    if True:
         compiler = PATH_TO_MSVC + "cl.exe"
         linker = PATH_TO_MSVC + "link.exe"
         obj_files = []

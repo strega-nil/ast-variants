@@ -69,7 +69,7 @@ namespace variant {
     }
 
     template <Tag_t tag>
-    using tag_is_valid =
+    using next_tag_valid =
         std::integral_constant<bool, impl::tag_valid(impl::tag_increment(tag))>;
 
     template <Tag_t tag, typename F, typename... Fs>
@@ -80,15 +80,18 @@ namespace variant {
       } else {
         constexpr auto new_tag = impl::tag_increment(tag);
         return try_all<new_tag>(
-            tag_is_valid<new_tag>(), std::forward<Fs>(fs)...);
+            next_tag_valid<new_tag>(), std::forward<Fs>(fs)...);
       }
     }
 
     template <Tag_t tag, typename F, typename... Fs>
-    [[noreturn]] auto try_all(std::false_type, F&& f, Fs&&... fs)
-        -> decltype(try_all_funcs<tag>(
-            callable<tag, F>(), std::forward<F>(f), std::forward<Fs>(fs)...)) {
-      std::abort();
+    auto try_all(std::false_type, F&& f, Fs&&... fs) {
+      if (tag == pointer_->tag()) {
+        return try_all_funcs<tag>(
+            callable<tag, F>(), std::forward<F>(f), std::forward<Fs>(fs)...);
+      } else {
+        std::abort();
+      }
     }
 
   public:
@@ -97,7 +100,7 @@ namespace variant {
     template <typename... Fs>
     auto operator()(Fs&&... fs) {
       constexpr auto tag = Tag_t(0);
-      return try_all<tag>(tag_is_valid<tag>(), std::forward<Fs>(fs)...);
+      return try_all<tag>(next_tag_valid<tag>(), std::forward<Fs>(fs)...);
     }
   }; // namespace variant
 
