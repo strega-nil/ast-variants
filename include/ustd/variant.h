@@ -2,7 +2,7 @@
 
 #include "type_traits.h"
 
-#include <stdexcept>
+#include <utility>
 
 namespace ustd {
 namespace variant {
@@ -102,7 +102,7 @@ namespace variant {
       constexpr auto tag = Tag_t(0);
       return try_all<tag>(next_tag_valid<tag>(), std::forward<Fs>(fs)...);
     }
-  }; // namespace variant
+  };
 
   template <typename T>
   auto match(T& matchee) {
