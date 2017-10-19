@@ -20,7 +20,7 @@ COMPILER_FLAGS = [
     "/I" + STDC_INCLUDES,
     "/Iinclude",
     "/c",
-    "/std:c++latest",
+    "/std:c++14",
     "/EHsc",
     "/nologo",
     "/W4",
@@ -55,7 +55,7 @@ def main():
             exit(res)
     else:
         compat_flags = ["-Xclang", "-flto-visibility-public-std"]
-        lang_flags = ["-Iinclude", "-std=c++17", "-c"]
+        lang_flags = ["-Iinclude", "-std=c++14", "-c"]
         warning_flags = ["-Wall", "-Wextra", "-pedantic"]
         for file in files:
             res = call(
