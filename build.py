@@ -37,19 +37,32 @@ LINKER_FLAGS = [
 ]
 
 
+def base_file_name(file):
+    """
+    take a file name like "boop/foo.bar" and give you "foo"
+    returns the thing before the first dot in the thing after the last slash
+    """
+    base_file = str.split(file, "/")[-1]
+    name = str.split(base_file, ".")[0]
+    return name
+
+
 def main():
     """
     main function, to get pylint off my back about naming ;)
     """
     files = ["source/main.cpp", "source/ustd/utility.cpp"]
-    if True:
+    if False:
         compiler = PATH_TO_MSVC + "cl.exe"
         linker = PATH_TO_MSVC + "link.exe"
+        obj_files = []
         for file in files:
-            res = call([compiler, *COMPILER_FLAGS, file])
+            output_file = "build/" + base_file_name(file) + ".obj"
+            output = "/Fo" + output_file
+            list.append(obj_files, output_file)
+            res = call([compiler, *COMPILER_FLAGS, file, output])
             if res != 0:
                 exit(res)
-        obj_files = ["main.obj", "utility.obj"]
         res = call([linker, *LINKER_FLAGS, *obj_files])
         if res != 0:
             exit(res)
@@ -57,12 +70,15 @@ def main():
         compat_flags = ["-Xclang", "-flto-visibility-public-std"]
         lang_flags = ["-Iinclude", "-std=c++14", "-c"]
         warning_flags = ["-Wall", "-Wextra", "-pedantic"]
+        obj_files = []
         for file in files:
+            output_file = "build/" + base_file_name(file) + ".o"
+            output = "-o" + output_file
+            list.append(obj_files, output_file)
             res = call(
-                ["clang++", *compat_flags, *lang_flags, *warning_flags, file])
+                ["clang++", *compat_flags, *lang_flags, *warning_flags, file, output])
             if res != 0:
                 exit(res)
-        obj_files = ["main.o", "utility.o"]
         res = call(["clang++", *obj_files, "-o", "main.exe"])
         if res != 0:
             exit(res)

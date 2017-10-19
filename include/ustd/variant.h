@@ -61,7 +61,7 @@ namespace variant {
     template <Tag_t tag, typename F, typename F2, typename... Fs>
     auto try_all_funcs(std::false_type, F&&, F2&& f2, Fs&&... fs) {
       return try_all_funcs<tag>(
-          callable<F2, tag>(), std::forward<F2>(f2), std::forward<Fs>(fs)...);
+          callable<tag, F2>(), std::forward<F2>(f2), std::forward<Fs>(fs)...);
     }
     template <Tag_t tag, typename F>
     auto try_all_funcs(std::false_type, F&&) {
