@@ -5,9 +5,9 @@
 using namespace ustd;
 
 int evaluate(Ast_node::thin const& ast) {
-  if (auto ptr = variant::thin_cast<Ast_node::int_literal>(ast)) {
+  if (auto ptr = thin_cast<Ast_node::int_literal>(ast)) {
     return ptr->value;
-  } else if (auto ptr = variant::thin_cast<Ast_node::plus>(ast)) {
+  } else if (auto ptr = thin_cast<Ast_node::plus>(ast)) {
     return evaluate(*ptr->lhs) + evaluate(*ptr->rhs);
   } else {
     std::abort();

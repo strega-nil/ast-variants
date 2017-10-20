@@ -107,31 +107,32 @@ namespace variant {
   template <typename Variant>
   struct fat {};
 
-  template <typename Type, typename Variant>
-  constexpr Type const* thin_cast(thin<Variant> const& x) {
-    using helper = typename thin<Variant>::template helper<Type>;
-    constexpr auto tag = type_tag<Variant, Type>();
-    if (x.tag() == tag) {
-      auto const& tmp = static_cast<helper const&>(x);
-      return &tmp.value;
-    } else {
-      return nullptr;
-    }
-  }
-
-  template <typename Type, typename Variant>
-  constexpr Type* thin_cast(thin<Variant>& x) {
-    using helper = typename thin<Variant>::template helper<Type>;
-    constexpr auto tag = type_tag<Variant, Type>();
-    if (x.tag() == tag) {
-      auto& tmp = static_cast<helper&>(x);
-      return &tmp.value;
-    } else {
-      return nullptr;
-    }
-  }
-
 } // namespace variant
+
+template <typename Type, typename Variant>
+constexpr Type const* thin_cast(variant::thin<Variant> const& x) {
+  using helper = typename variant::thin<Variant>::template helper<Type>;
+  constexpr auto tag = variant::type_tag<Variant, Type>();
+  if (x.tag() == tag) {
+    auto const& tmp = static_cast<helper const&>(x);
+    return &tmp.value;
+  } else {
+    return nullptr;
+  }
+}
+
+template <typename Type, typename Variant>
+constexpr Type* thin_cast(variant::thin<Variant>& x) {
+  using helper = typename variant::thin<Variant>::template helper<Type>;
+  constexpr auto tag = variant::type_tag<Variant, Type>();
+  if (x.tag() == tag) {
+    auto& tmp = static_cast<helper&>(x);
+    return &tmp.value;
+  } else {
+    return nullptr;
+  }
+}
+
 } // namespace ustd
 
 #define declare_variant(name, ...)                                             \
