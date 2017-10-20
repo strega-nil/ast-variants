@@ -20,10 +20,6 @@ namespace variant {
     }
   } // namespace impl
 
-  struct Unknown_tag : std::out_of_range {
-    Unknown_tag() : out_of_range("Tag is out of range of valid variants") {}
-  };
-
   template <typename Derived, typename Base>
   Derived* try_cast(Base& base) {
     if (base.tag() == Derived::variant_tag) {
