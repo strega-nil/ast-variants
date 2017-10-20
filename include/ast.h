@@ -75,6 +75,7 @@ inline auto thin<Variant>::make(Ts&&... ts) -> std::unique_ptr<thin<Variant>> {
 }
 
 // TODO(ubsan): actually add a fat variant
+// NOTE(ubsan): should probably inherit from thin<Variant>
 template <typename Variant>
 struct fat {};
 
@@ -126,5 +127,9 @@ struct Ast_node {
     std::unique_ptr<thin> rhs;
     plus(std::unique_ptr<thin> lhs, std::unique_ptr<thin> rhs)
         : lhs(std::move(lhs)), rhs(std::move(rhs)) {}
+    template <typename T, typename U>
+    plus(T lhs, U rhs)
+        : lhs(std::make_unique<thin_helper<Ast_node, T>>(std::move(lhs))),
+          rhs(std::make_unique<thin_helper<Ast_node, U>>(std::move(rhs))) {}
   };
 };

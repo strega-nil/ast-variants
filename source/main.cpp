@@ -16,7 +16,6 @@ int evaluate(Ast_node::thin const& ast) {
 
 int main() {
   auto ast = Ast_node::thin::make<Ast_node::plus>(
-      Ast_node::thin::make<Ast_node::int_literal>(0),
-      Ast_node::thin::make<Ast_node::int_literal>(1));
+      Ast_node::int_literal(0), Ast_node::int_literal(1));
   std::cout << evaluate(*ast) << '\n';
 }
