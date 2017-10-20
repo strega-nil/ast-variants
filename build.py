@@ -55,7 +55,7 @@ def main():
     files = ["source/main.cpp", "source/ustd/utility.cpp"]
     if not os.path.exists("build"):
         os.makedirs("build")
-    if True:
+    if False:
         compiler = PATH_TO_MSVC + "cl.exe"
         linker = PATH_TO_MSVC + "link.exe"
         obj_files = []

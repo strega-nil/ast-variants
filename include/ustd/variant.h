@@ -2,6 +2,7 @@
 
 #include "type_traits.h"
 
+#include <memory>
 #include <utility>
 
 namespace ustd {
@@ -20,24 +21,144 @@ namespace variant {
     }
   } // namespace impl
 
-  template <typename Derived, typename Base>
-  Derived* try_cast(Base& base) {
-    if (base.tag() == Derived::variant_tag) {
-      return static_cast<Derived*>(&base);
+  template <typename... Ts>
+  struct type_list {};
+
+  template <typename Variant, typename Variant::tag... ts>
+  struct tag_list {};
+
+  template <typename Variant>
+  struct make_tag_list_helper {
+  private:
+    using tag_t = typename Variant::tag;
+    using underlying_t = std::underlying_type_t<tag_t>;
+    using sequence =
+        std::make_integer_sequence<underlying_t, underlying_t(tag_t::TAG_END)>;
+
+    template <underlying_t... seq>
+    static auto func(std::integer_sequence<underlying_t, seq...>)
+        -> tag_list<Variant, tag_t(seq)...> {}
+
+  public:
+    using type = decltype(func(sequence()));
+  };
+
+  template <typename Variant>
+  using make_tag_list = typename make_tag_list_helper<Variant>::type;
+
+  template <typename Variant, typename Variant::tag Tag>
+  inline constexpr static char const* tag_name() {
+    return Variant::tag_name(
+        std::integral_constant<typename Variant::tag, Tag>());
+  }
+  template <typename Variant, typename Variant::tag Tag>
+  using tag_type = decltype(
+      Variant::tag_type(std::integral_constant<typename Variant::tag, Tag>()));
+  template <typename Variant, typename Type>
+  using type_tag = decltype(Variant::type_tag(std::declval<Type>()));
+
+  template <typename Variant>
+  struct thin {
+    using tag_t = typename Variant::tag;
+
+    template <typename Type>
+    struct helper;
+
+    constexpr tag_t tag() const { return tag_; }
+    template <typename Type, typename... Ts>
+    static std::unique_ptr<helper<Type>> make_unique(Ts&&... ts);
+    template <typename Type, typename... Ts>
+    constexpr static helper<Type> make(Ts&&... ts);
+
+    virtual ~thin() = default;
+
+  protected:
+    virtual void thin_must_be_virtual_() = 0;
+    tag_t tag_;
+    thin(tag_t tag_) : tag_(tag_) {}
+  };
+
+  template <typename Variant>
+  template <typename Type>
+  struct thin<Variant>::helper : thin<Variant> {
+    using tag = type_tag<Variant, Type>;
+    Type value;
+    template <typename... Ts>
+    helper(Ts&&... ts) : thin<Variant>(tag()), value(std::forward<Ts>(ts)...) {}
+
+  protected:
+    virtual void thin_must_be_virtual_() override {}
+  };
+
+  template <typename Variant>
+  template <typename Type, typename... Ts>
+  inline auto thin<Variant>::make_unique(Ts&&... ts)
+      -> std::unique_ptr<helper<Type>> {
+    return std::make_unique<helper<Type>>(std::forward<Ts>(ts)...);
+  }
+  template <typename Variant>
+  template <typename Type, typename... Ts>
+  constexpr inline auto thin<Variant>::make(Ts&&... ts) -> helper<Type> {
+    return helper<Type>(std::forward<Ts>(ts)...);
+  }
+
+  // TODO(ubsan): actually add a fat variant
+  // NOTE(ubsan): should probably inherit from thin<Variant>
+  template <typename Variant>
+  struct fat {};
+
+  template <typename Type, typename Variant>
+  constexpr Type const* thin_cast(thin<Variant> const& x) {
+    using helper = typename thin<Variant>::template helper<Type>;
+    constexpr auto tag = type_tag<Variant, Type>();
+    if (x.tag() == tag) {
+      auto const& tmp = static_cast<helper const&>(x);
+      return &tmp.value;
     } else {
       return nullptr;
     }
   }
 
-  template <typename Derived, typename Base>
-  Derived const* try_cast(Base const& base) {
-    if (base.tag() == Derived::variant_tag) {
-      return static_cast<Derived const*>(&base);
+  template <typename Type, typename Variant>
+  constexpr Type* thin_cast(thin<Variant>& x) {
+    using helper = typename thin<Variant>::template helper<Type>;
+    constexpr auto tag = type_tag<Variant, Type>();
+    if (x.tag() == tag) {
+      auto& tmp = static_cast<helper&>(x);
+      return &tmp.value;
     } else {
       return nullptr;
     }
   }
 
+} // namespace variant
+} // namespace ustd
+
+#define declare_variant(name, ...)                                             \
+  enum class tag {                                                             \
+    __VA_ARGS__,                                                               \
+    TAG_END,                                                                   \
+  };                                                                           \
+  \
+using thin = ustd::variant::thin<name>;                                        \
+  \
+using fat = ustd::variant::fat<name>
+
+#define declare_variant_member(name)                                           \
+  struct name;                                                                 \
+  \
+static std::integral_constant<tag, tag::name>                                  \
+      type_tag(name);                                                          \
+  \
+static name tag_type(std::integral_constant<tag, tag::name>);                  \
+  \
+constexpr static char const*                                                   \
+  tag_name(std::integral_constant<tag, tag::name>) {                           \
+    return #name;                                                              \
+  \
+}
+
+#if 0
   template <typename T>
   class Matcher {
     using Tag_t = typename T::Tag;
@@ -116,10 +237,4 @@ namespace variant {
   auto match(T const volatile& matchee) {
     return Matcher<T const volatile>(matchee);
   }
-
-  template <typename Derived, typename Base>
-  Derived* try_cast(Base&&) = delete;
-  template <typename Derived, typename Base>
-  Derived const* try_cast(Base const&&) = delete;
-} // namespace variant
-} // namespace ustd
+#endif
