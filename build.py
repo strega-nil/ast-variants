@@ -25,7 +25,7 @@ COMPILER_FLAGS = [
     "/EHsc",
     "/nologo",
     "/W4",
-    "/wd4100",
+    "/wd4456",
     "/permissive-",
 ]
 LINKER_FLAGS = [

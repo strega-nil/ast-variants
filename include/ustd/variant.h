@@ -123,27 +123,3 @@ namespace variant {
   Derived const* try_cast(Base const&&) = delete;
 } // namespace variant
 } // namespace ustd
-
-#define variant_tags(...)                                                      \
-  enum class Tag { __VA_ARGS__, TAG_END };                                     \
-  Tag tag() const { return tag_; }
-
-#define variant_declare_alternative(variant)                                   \
-  struct variant;                                                              \
-  static struct variant get_type(std::integral_constant<Tag, Tag::variant>)
-
-#define variant_base(name)                                                     \
-  \
-public:                                                                        \
-  virtual ~name() {}                                                           \
-  \
-protected:                                                                     \
-  Tag tag_;                                                                    \
-  virtual void _variant_force_pure_virtual() = 0;                              \
-  \
-name(Tag tag)                                                                  \
-      : tag_(tag) {}
-
-#define variant_alternative(base, name)                                        \
-  constexpr static auto variant_tag = base::Tag::name;                         \
-  void _variant_force_pure_virtual() override {}
