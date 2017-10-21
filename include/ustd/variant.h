@@ -19,12 +19,28 @@ namespace variant {
       constexpr auto tag_end = static_cast<underlying>(T::TAG_END);
       return static_cast<underlying>(tag) < tag_end;
     }
+
+    template <typename T>
+    constexpr auto max(T t) {
+      return t;
+    }
+    template <typename T, typename... Ts>
+    constexpr auto max(T t, Ts... ts) {
+      auto rest = max(ts...);
+      return t < rest ? rest : t;
+    }
+
+    template <typename... Ts>
+    struct max_size {
+      static constexpr auto value = max(sizeof(Ts)...);
+    };
+    template <typename... Ts>
+    struct max_align {
+      static constexpr auto value = max(alignof(Ts)...);
+    };
   } // namespace impl
 
-  template <typename... Ts>
-  struct type_list {};
-
-  template <typename Variant, typename Variant::tag... ts>
+  template <typename Variant, typename Variant::tag... Ts>
   struct tag_list {};
 
   template <typename Variant>
@@ -57,6 +73,15 @@ namespace variant {
   template <typename Variant, typename Type>
   using type_tag = decltype(Variant::type_tag(std::declval<Type>()));
 
+  template <typename Tag_list>
+  struct tag_list_types_helper;
+  template <typename Variant, typename Variant::tag... Ts>
+  struct tag_list_types_helper<tag_list<Variant, Ts...>> {
+    using type = type_traits::type_list<tag_type<Variant, Ts>...>;
+  };
+  template <typename Tag_list>
+  using tag_list_types = typename tag_list_types_helper<Tag_list>::type;
+
   template <typename Variant>
   struct thin {
     using tag_t = typename Variant::tag;
@@ -83,6 +108,7 @@ namespace variant {
   struct thin<Variant>::helper : thin<Variant> {
     using tag = type_tag<Variant, Type>;
     Type value;
+
     template <typename... Ts>
     helper(Ts&&... ts) : thin<Variant>(tag()), value(std::forward<Ts>(ts)...) {}
 
@@ -105,7 +131,18 @@ namespace variant {
   // TODO(ubsan): actually add a fat variant
   // NOTE(ubsan): should probably inherit from thin<Variant>
   template <typename Variant>
-  struct fat {};
+  struct fat {
+    using tag_t = typename Variant::tag;
+
+  private:
+    tag_t tag_;
+    std::aligned_storage<
+        type_traits::expand_type_list<
+            tag_list_types<make_tag_list<Variant>>, impl::max_size>::value,
+        type_traits::expand_type_list<
+            tag_list_types<make_tag_list<Variant>>, impl::max_align>::value>
+        storage_;
+  };
 
 } // namespace variant
 
