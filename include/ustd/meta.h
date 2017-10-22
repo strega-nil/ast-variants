@@ -3,7 +3,8 @@
 #include <type_traits>
 
 namespace ustd {
-namespace type_traits {
+namespace meta {
+
   template <typename F, typename T, typename Void = void>
   struct is_callable : std::false_type {};
 
@@ -81,5 +82,15 @@ namespace type_traits {
   };
   template <typename T, template <typename...> class F>
   using expand_type_list = typename expand_type_list_helper<T, F>::type;
-} // namespace type_traits
-}
+
+  template <typename List1, typename List2>
+  struct union_type_lists_helper;
+  template <typename... Ts1, typename... Ts2>
+  struct union_type_lists_helper<type_list<Ts1...>, type_list<Ts2...>> {
+    using type = type_list<Ts1..., Ts2...>;
+  };
+  template <typename List1, typename List2>
+  using union_type_lists = typename union_type_lists_helper<List1, List2>::type;
+
+} // namespace meta
+} // namespace ustd

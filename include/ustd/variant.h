@@ -1,6 +1,6 @@
 #pragma once
 
-#include "type_traits.h"
+#include "meta.h"
 
 #include <memory>
 #include <utility>
@@ -56,9 +56,16 @@ namespace variant {
 
   template <typename Tag_list>
   struct tag_list_types_helper;
-  template <typename Variant, typename Variant::tag... Ts>
-  struct tag_list_types_helper<tag_list<Variant, Ts...>> {
-    using type = type_traits::type_list<tag_type<Variant, Ts>...>;
+  template <typename Variant, typename Variant::tag X>
+  struct tag_list_types_helper<tag_list<Variant, X>> {
+    using type = meta::type_list<tag_type<Variant, X>>;
+  };
+  template <
+      typename Variant, typename Variant::tag X, typename Variant::tag... Xs>
+  struct tag_list_types_helper<tag_list<Variant, X, Xs...>> {
+    using type = meta::union_type_lists<
+        meta::type_list<tag_type<Variant, X>>,
+        typename tag_list_types_helper<tag_list<Variant, Xs...>>::type>;
   };
   template <typename Tag_list>
   using tag_list_types = typename tag_list_types_helper<Tag_list>::type;
@@ -134,9 +141,9 @@ namespace variant {
   template <typename Variant>
   struct fat {
     using tag_t = typename Variant::tag;
-    constexpr static auto size = type_traits::expand_type_list<
+    constexpr static auto size = meta::expand_type_list<
         tag_list_types<make_tag_list<Variant>>, impl::max_size>::value;
-    constexpr static auto align = type_traits::expand_type_list<
+    constexpr static auto align = meta::expand_type_list<
         tag_list_types<make_tag_list<Variant>>, impl::max_align>::value;
 
     template <typename T>
@@ -210,11 +217,11 @@ namespace variant {
     T* pointer_;
 
     template <Tag_t tag>
-    using get_type = type_traits::copy_cv_t<T, tag_type<tag>>;
+    using get_type = meta::copy_cv_t<T, tag_type<tag>>;
 
     template <Tag_t tag, typename F, typename... Fs>
     auto try_all_funcs(std::true_type, F&& f, Fs&&...) {
-      if constexpr (type_traits::is_callable_v<F, void(get_type<tag>)>) {
+      if constexpr (meta::is_callable_v<F, void(get_type<tag>)>) {
         return std::forward<F>(f)(static_cast<get_type<tag>&>(*pointer_));
       } else {
         return try_all_funcs<tag>(std::forward<Fs>(fs)...);
