@@ -21,7 +21,7 @@ COMPILER_FLAGS = [
     "/I" + STDC_INCLUDES,
     "/Iinclude",
     "/c",
-    "/std:c++14",
+    "/std:c++17",
     "/EHsc",
     "/nologo",
     "/W4",
@@ -55,7 +55,7 @@ def main():
     files = ["source/main.cpp", "source/ustd/utility.cpp"]
     if not os.path.exists("build"):
         os.makedirs("build")
-    if False:
+    if True:
         compiler = PATH_TO_MSVC + "cl.exe"
         linker = PATH_TO_MSVC + "link.exe"
         obj_files = []
@@ -71,7 +71,7 @@ def main():
             exit(res)
     else:
         compat_flags = ["-Xclang", "-flto-visibility-public-std"]
-        lang_flags = ["-Iinclude", "-std=c++14", "-c"]
+        lang_flags = ["-Iinclude", "-std=c++17", "-c"]
         warning_flags = ["-Wall", "-Wextra", "-pedantic"]
         obj_files = []
         for file in files:

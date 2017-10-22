@@ -20,8 +20,8 @@ namespace type_traits {
   template <typename T>
   T declvalcat();
 
-  struct Any_type {
-    Any_type() = default;
+  struct any_type {
+    any_type() = default;
     template <typename T>
     operator T();
   };
@@ -43,7 +43,7 @@ namespace type_traits {
 
   template <typename... Fs>
   struct common_return_type {
-    using type = common_type_t<decltype(std::declval<Fs>()(Any_type()))...>;
+    using type = common_type_t<decltype(std::declval<Fs>()(any_type()))...>;
   };
 
   template <typename... Fs>

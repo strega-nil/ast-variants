@@ -4,8 +4,8 @@
 
 #include "ustd/variant.h"
 
-struct Ast_node {
-  declare_variant(Ast_node, int_literal, plus);
+struct ast_node {
+  declare_variant(ast_node, int_literal, plus);
 
   declare_variant_member(int_literal);
   struct int_literal {

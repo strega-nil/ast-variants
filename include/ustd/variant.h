@@ -19,25 +19,6 @@ namespace variant {
       constexpr auto tag_end = static_cast<underlying>(T::TAG_END);
       return static_cast<underlying>(tag) < tag_end;
     }
-
-    template <typename T>
-    constexpr auto max(T t) {
-      return t;
-    }
-    template <typename T, typename... Ts>
-    constexpr auto max(T t, Ts... ts) {
-      auto rest = max(ts...);
-      return t < rest ? rest : t;
-    }
-
-    template <typename... Ts>
-    struct max_size {
-      static constexpr auto value = max(sizeof(Ts)...);
-    };
-    template <typename... Ts>
-    struct max_align {
-      static constexpr auto value = max(alignof(Ts)...);
-    };
   } // namespace impl
 
   template <typename Variant, typename Variant::tag... Ts>
@@ -128,6 +109,28 @@ namespace variant {
     return helper<Type>(std::forward<Ts>(ts)...);
   }
 
+  namespace impl {
+    template <typename T>
+    constexpr auto max(T t) {
+      return t;
+    }
+    template <typename T, typename... Ts>
+    constexpr auto max(T t, Ts... ts) {
+      auto rest = max(ts...);
+      return t < rest ? rest : t;
+    }
+
+    template <typename... Ts>
+    struct max_size {
+      static constexpr auto value = max(sizeof(Ts)...);
+    };
+    template <typename... Ts>
+    struct max_align {
+      static constexpr auto value = max(alignof(Ts)...);
+    };
+
+  } // namespace impl
+
   template <typename Variant>
   struct fat {
     using tag_t = typename Variant::tag;
@@ -143,11 +146,6 @@ namespace variant {
 
     fat() = delete;
 
-    // TODO(ubsan): implement the special member functions
-
-    fat(fat const& other) = delete;
-    fat& operator=(fat const&) & = delete;
-
     tag_t tag() const { return tag_; }
     void const* raw_storage() const {
       return static_cast<void const*>(&storage_);
@@ -157,7 +155,125 @@ namespace variant {
   private:
     tag_t tag_;
     std::aligned_storage_t<size, align> storage_;
+
+    template <tag_t current, template <tag_t> class F, typename T1, typename T2>
+    static auto visit_helper(tag_t tag, T1&& t1, T2&& t2) {
+      if constexpr (impl::tag_valid(impl::tag_increment(current))) {
+        if (tag == current) {
+          return F<current>::func(std::forward<T1>(t1), std::forward<T2>(t2));
+        } else {
+          return fat::visit_helper<impl::tag_increment(current), F>(
+              tag, std::forward<T1>(t1), std::forward<T2>(t2));
+        }
+      } else {
+        if (tag == current) {
+          return F<current>::func(std::forward<T1>(t1), std::forward<T2>(t2));
+        } else {
+          // tag is not a valid tag_t
+          std::abort();
+        }
+      }
+    }
+
+    template <template <tag_t> class F, typename T1, typename T2>
+    static auto visit(tag_t tag, T1&& t1, T2&& t2) {
+      return fat::visit_helper<tag_t(0), F>(
+          tag, std::forward<T1>(t1), std::forward<T2>(t2));
+    }
+
+    template <tag_t tag>
+    struct smf_helper {
+      static void func(fat& self, fat const& other) {
+        using type = tag_type<Variant, tag>;
+        new (&self.storage_)
+            type(reinterpret_cast<type const&>(other.storage_));
+      }
+      static void func(fat& self, fat&& other) {
+        using type = tag_type<Variant, tag>;
+        new (&self.storage_) type(reinterpret_cast<type&&>(other.storage_));
+      }
+    };
+
+  public:
+    fat(fat const& other) : tag_(other.tag_) {
+      fat::visit<smf_helper>(tag_, *this, other);
+    }
+    fat(fat&& other) : tag_(other.tag_) {
+      fat::visit<smf_helper>(tag_, *this, std::move(other));
+    }
   };
+
+#if 0
+  template <typename T>
+  class Matcher_thin {
+    using Tag_t = typename T::Tag;
+    T* pointer_;
+
+    template <Tag_t tag>
+    using get_type = type_traits::copy_cv_t<T, tag_type<tag>>;
+
+    template <Tag_t tag, typename F, typename... Fs>
+    auto try_all_funcs(std::true_type, F&& f, Fs&&...) {
+      if constexpr (type_traits::is_callable_v<F, void(get_type<tag>)>) {
+        return std::forward<F>(f)(static_cast<get_type<tag>&>(*pointer_));
+      } else {
+        return try_all_funcs<tag>(std::forward<Fs>(fs)...);
+      }
+    }
+
+    template <Tag_t tag>
+    using next_tag_valid =
+        std::integral_constant<bool, impl::tag_valid(impl::tag_increment(tag))>;
+
+    template <Tag_t tag, typename F, typename... Fs>
+    auto try_all(std::true_type, F&& f, Fs&&... fs) {
+      if (tag == pointer_->tag()) {
+        return try_all_funcs<tag>(
+            callable<tag, F>(), std::forward<F>(f), std::forward<Fs>(fs)...);
+      } else {
+        constexpr auto new_tag = impl::tag_increment(tag);
+        return try_all<new_tag>(
+            next_tag_valid<new_tag>(), std::forward<Fs>(fs)...);
+      }
+    }
+
+    template <Tag_t tag, typename F, typename... Fs>
+    auto try_all(std::false_type, F&& f, Fs&&... fs) {
+      if (tag == pointer_->tag()) {
+        return try_all_funcs<tag>(
+            callable<tag, F>(), std::forward<F>(f), std::forward<Fs>(fs)...);
+      } else {
+        std::abort();
+      }
+    }
+
+  public:
+    Matcher(T& matchee) : pointer_(&matchee) {}
+
+    template <typename... Fs>
+    auto operator()(Fs&&... fs) {
+      constexpr auto tag = Tag_t(0);
+      return try_all<tag>(next_tag_valid<tag>(), std::forward<Fs>(fs)...);
+    }
+  };
+
+  template <typename T>
+  auto match(T& matchee) {
+    return Matcher<T>(matchee);
+  }
+  template <typename T>
+  auto match(T const& matchee) {
+    return Matcher<T const>(matchee);
+  }
+  template <typename T>
+  auto match(T volatile& matchee) {
+    return Matcher<T volatile>(matchee);
+  }
+  template <typename T>
+  auto match(T const volatile& matchee) {
+    return Matcher<T const volatile>(matchee);
+  }
+#endif
 
 } // namespace variant
 
@@ -232,82 +348,4 @@ constexpr static char const*                                                   \
 }
 
 #if 0
-  template <typename T>
-  class Matcher {
-    using Tag_t = typename T::Tag;
-    T* pointer_;
-
-    template <Tag_t tag>
-    using get_type = type_traits::copy_cv_t<
-        T, decltype(T::get_type(std::integral_constant<Tag_t, tag>()))>;
-    template <Tag_t tag, typename F>
-    using callable = std::integral_constant<
-        bool, type_traits::is_callable_v<F, void(get_type<tag>)>>;
-
-    template <Tag_t tag, typename F, typename... Fs>
-    auto try_all_funcs(std::true_type, F&& f, Fs&&...) {
-      return std::forward<F>(f)(static_cast<get_type<tag>&>(*pointer_));
-    }
-    template <Tag_t tag, typename F, typename F2, typename... Fs>
-    auto try_all_funcs(std::false_type, F&&, F2&& f2, Fs&&... fs) {
-      return try_all_funcs<tag>(
-          callable<tag, F2>(), std::forward<F2>(f2), std::forward<Fs>(fs)...);
-    }
-    template <Tag_t tag, typename F>
-    auto try_all_funcs(std::false_type, F&&) {
-      static_assert(sizeof(F) < 0, "The matching was inexhaustive");
-    }
-
-    template <Tag_t tag>
-    using next_tag_valid =
-        std::integral_constant<bool, impl::tag_valid(impl::tag_increment(tag))>;
-
-    template <Tag_t tag, typename F, typename... Fs>
-    auto try_all(std::true_type, F&& f, Fs&&... fs) {
-      if (tag == pointer_->tag()) {
-        return try_all_funcs<tag>(
-            callable<tag, F>(), std::forward<F>(f), std::forward<Fs>(fs)...);
-      } else {
-        constexpr auto new_tag = impl::tag_increment(tag);
-        return try_all<new_tag>(
-            next_tag_valid<new_tag>(), std::forward<Fs>(fs)...);
-      }
-    }
-
-    template <Tag_t tag, typename F, typename... Fs>
-    auto try_all(std::false_type, F&& f, Fs&&... fs) {
-      if (tag == pointer_->tag()) {
-        return try_all_funcs<tag>(
-            callable<tag, F>(), std::forward<F>(f), std::forward<Fs>(fs)...);
-      } else {
-        std::abort();
-      }
-    }
-
-  public:
-    Matcher(T& matchee) : pointer_(&matchee) {}
-
-    template <typename... Fs>
-    auto operator()(Fs&&... fs) {
-      constexpr auto tag = Tag_t(0);
-      return try_all<tag>(next_tag_valid<tag>(), std::forward<Fs>(fs)...);
-    }
-  };
-
-  template <typename T>
-  auto match(T& matchee) {
-    return Matcher<T>(matchee);
-  }
-  template <typename T>
-  auto match(T const& matchee) {
-    return Matcher<T const>(matchee);
-  }
-  template <typename T>
-  auto match(T volatile& matchee) {
-    return Matcher<T volatile>(matchee);
-  }
-  template <typename T>
-  auto match(T const volatile& matchee) {
-    return Matcher<T const volatile>(matchee);
-  }
 #endif
