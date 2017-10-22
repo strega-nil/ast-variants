@@ -25,9 +25,7 @@ int evaluate(ast_node::fat const& ast) {
 }
 
 int main() {
-  // make certain we're actually calling the move constructor
-  // yay C++17 being sane!
-  auto ast = std::move(ast_node::fat(
-      ast_node::plus(ast_node::int_literal(10), ast_node::int_literal(20))));
+  auto ast = as<ast_node::fat>(ast_node::int_literal(12));
+  ast = ast_node::plus(ast_node::int_literal(10), ast_node::int_literal(20));
   std::cout << evaluate(ast) << '\n';
 }

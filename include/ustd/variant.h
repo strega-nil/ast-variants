@@ -163,18 +163,18 @@ namespace variant {
     tag_t tag_;
     std::aligned_storage_t<size, align> storage_;
 
-    template <tag_t current, template <tag_t> class F, typename T1, typename T2>
-    static auto visit_helper(tag_t tag, T1&& t1, T2&& t2) {
+    template <tag_t current, template <tag_t> class F, typename... Ts>
+    static auto visit_helper(tag_t tag, Ts&&... ts) {
       if constexpr (impl::tag_valid(impl::tag_increment(current))) {
         if (tag == current) {
-          return F<current>::func(std::forward<T1>(t1), std::forward<T2>(t2));
+          return F<current>::func(std::forward<Ts>(ts)...);
         } else {
           return fat::visit_helper<impl::tag_increment(current), F>(
-              tag, std::forward<T1>(t1), std::forward<T2>(t2));
+              tag, std::forward<Ts>(ts)...);
         }
       } else {
         if (tag == current) {
-          return F<current>::func(std::forward<T1>(t1), std::forward<T2>(t2));
+          return F<current>::func(std::forward<Ts>(ts)...);
         } else {
           // tag is not a valid tag_t
           std::abort();
@@ -182,10 +182,9 @@ namespace variant {
       }
     }
 
-    template <template <tag_t> class F, typename T1, typename T2>
-    static auto visit(tag_t tag, T1&& t1, T2&& t2) {
-      return fat::visit_helper<tag_t(0), F>(
-          tag, std::forward<T1>(t1), std::forward<T2>(t2));
+    template <template <tag_t> class F, typename... Ts>
+    static auto visit(tag_t tag, Ts&&... ts) {
+      return fat::visit_helper<tag_t(0), F>(tag, std::forward<Ts>(ts)...);
     }
 
     template <tag_t tag>
@@ -200,14 +199,40 @@ namespace variant {
         new (&self.storage_) type(reinterpret_cast<type&&>(other.storage_));
       }
     };
+    template <tag_t tag>
+    struct destructor_helper {
+      static void func(fat& self) {
+        using type = tag_type<Variant, tag>;
+        reinterpret_cast<type&>(self.storage_).~type();
+      }
+    };
 
   public:
     fat(fat const& other) : tag_(other.tag_) {
-      fat::visit<smf_helper>(tag_, *this, other);
+      visit<smf_helper>(tag_, *this, other);
     }
     fat(fat&& other) : tag_(other.tag_) {
-      fat::visit<smf_helper>(tag_, *this, std::move(other));
+      visit<smf_helper>(tag_, *this, std::move(other));
     }
+    fat& operator=(fat const& other) & {
+      this->~fat();
+      try {
+        new (this) fat(other);
+      } catch (...) {
+        std::abort();
+      }
+      return *this;
+    }
+    fat& operator=(fat&& other) & {
+      this->~fat();
+      try {
+        new (this) fat(std::move(other));
+      } catch (...) {
+        std::abort();
+      }
+      return *this;
+    }
+    ~fat() { visit<destructor_helper>(tag_, *this); }
   };
 
 #if 0
