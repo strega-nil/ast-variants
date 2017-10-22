@@ -346,6 +346,3 @@ constexpr static char const*                                                   \
     return #name;                                                              \
   \
 }
-
-#if 0
-#endif
