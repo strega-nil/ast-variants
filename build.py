@@ -13,7 +13,7 @@ KIT_VERSION = "10.0.15063.0/"
 MSVC_VERSION = "14.11.25503/"
 
 PATH_TO_VS = "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/"
-PATH_TO_TOOLS = PATH_TO_VS + "Tools/MSVC/"
+PATH_TO_TOOLS = PATH_TO_VS + "Tools/MSVC/" + MSVC_VERSION
 PATH_TO_KIT = "C:/Program Files (x86)/Windows Kits/10/"
 PATH_TO_MSVC = PATH_TO_TOOLS + "bin/HostX64/x64/"
 STDCXX_INCLUDES = PATH_TO_TOOLS + "include"
