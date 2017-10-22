@@ -1,33 +1,26 @@
 #pragma once
 
-#include <ustd/variant.h>
-
-#include <iostream>
 #include <memory>
 
-struct Ast_node {
-  variant_tags(Int_literal, Plus);
+#include "ustd/variant.h"
 
-  variant_declare_alternative(Int_literal);
-  variant_declare_alternative(Plus);
-  variant_base(Ast_node);
-};
+struct ast_node {
+  declare_variant(ast_node, int_literal, plus);
 
-// TODO(ubsan): figure out how to make constructor definition easier
-
-struct Ast_node::Int_literal : Ast_node {
-  int value;
-  Int_literal(int x) : Ast_node(variant_tag), value(x) {}
-
-  variant_alternative(Ast_node, Int_literal);
-};
-
-struct Ast_node::Plus : Ast_node {
-  std::unique_ptr<Ast_node> lhs;
-  std::unique_ptr<Ast_node> rhs;
-
-  Plus(std::unique_ptr<Ast_node> lhs, std::unique_ptr<Ast_node> rhs)
-      : Ast_node(variant_tag), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
-
-  variant_alternative(Ast_node, Plus);
+  declare_variant_member(int_literal);
+  struct int_literal {
+    int value;
+    int_literal(int value) : value(value) {}
+  };
+  declare_variant_member(plus);
+  struct plus {
+    std::unique_ptr<thin> lhs;
+    std::unique_ptr<thin> rhs;
+    plus(std::unique_ptr<thin> lhs, std::unique_ptr<thin> rhs)
+        : lhs(std::move(lhs)), rhs(std::move(rhs)) {}
+    template <typename T, typename U>
+    plus(T lhs, U rhs)
+        : lhs(thin::make_unique<T>(std::move(lhs))),
+          rhs(thin::make_unique<U>(std::move(rhs))) {}
+  };
 };

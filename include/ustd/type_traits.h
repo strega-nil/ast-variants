@@ -20,8 +20,8 @@ namespace type_traits {
   template <typename T>
   T declvalcat();
 
-  struct Any_type {
-    Any_type() = default;
+  struct any_type {
+    any_type() = default;
     template <typename T>
     operator T();
   };
@@ -43,7 +43,7 @@ namespace type_traits {
 
   template <typename... Fs>
   struct common_return_type {
-    using type = common_type_t<decltype(std::declval<Fs>()(Any_type()))...>;
+    using type = common_type_t<decltype(std::declval<Fs>()(any_type()))...>;
   };
 
   template <typename... Fs>
@@ -68,5 +68,18 @@ namespace type_traits {
 
   template <typename From, typename To>
   using copy_cv_t = typename copy_cv<From, To>::type;
+
+  template <typename... Ts>
+  struct type_list {};
+
+  template <typename T, template <typename...> class F>
+  struct expand_type_list_helper;
+
+  template <typename... Ts, template <typename...> class F>
+  struct expand_type_list_helper<type_list<Ts...>, F> {
+    using type = F<Ts...>;
+  };
+  template <typename T, template <typename...> class F>
+  using expand_type_list = typename expand_type_list_helper<T, F>::type;
 } // namespace type_traits
 }

@@ -9,10 +9,12 @@ You might have to replace the path I use with your cl path
 import os
 from subprocess import call
 
-PATH_TO_VS = "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/"
-PATH_TO_TOOLS = PATH_TO_VS + "Tools/MSVC/14.11.25503/"
-PATH_TO_KIT = "C:/Program Files (x86)/Windows Kits/10/"
 KIT_VERSION = "10.0.15063.0/"
+MSVC_VERSION = "14.11.25503/"
+
+PATH_TO_VS = "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/"
+PATH_TO_TOOLS = PATH_TO_VS + "Tools/MSVC/" + MSVC_VERSION
+PATH_TO_KIT = "C:/Program Files (x86)/Windows Kits/10/"
 PATH_TO_MSVC = PATH_TO_TOOLS + "bin/HostX64/x64/"
 STDCXX_INCLUDES = PATH_TO_TOOLS + "include"
 STDC_INCLUDES = PATH_TO_KIT + "Include/" + KIT_VERSION + "ucrt"
@@ -21,11 +23,11 @@ COMPILER_FLAGS = [
     "/I" + STDC_INCLUDES,
     "/Iinclude",
     "/c",
-    "/std:c++14",
+    "/std:c++17",
     "/EHsc",
     "/nologo",
     "/W4",
-    "/wd4100",
+    "/wd4456",
     "/permissive-",
 ]
 LINKER_FLAGS = [
@@ -71,7 +73,7 @@ def main():
             exit(res)
     else:
         compat_flags = ["-Xclang", "-flto-visibility-public-std"]
-        lang_flags = ["-Iinclude", "-std=c++14", "-c"]
+        lang_flags = ["-Iinclude", "-std=c++17", "-c"]
         warning_flags = ["-Wall", "-Wextra", "-pedantic"]
         obj_files = []
         for file in files:

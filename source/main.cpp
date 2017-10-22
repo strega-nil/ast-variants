@@ -4,22 +4,30 @@
 
 using namespace ustd;
 
-// TODO(ubsan): make this C++14 compliant
-// - remove if constexpr
-// - nested namespace definitions (namespace x::y)
+int evaluate(ast_node::thin const& ast) {
+  if (auto ptr = thin_cast<ast_node::int_literal>(ast)) {
+    return ptr->value;
+  } else if (auto ptr = thin_cast<ast_node::plus>(ast)) {
+    return evaluate(*ptr->lhs) + evaluate(*ptr->rhs);
+  } else {
+    std::abort();
+  }
+}
 
-int evaluate(Ast_node const& ast) {
-  return variant::match(ast)(
-      [](Ast_node::Int_literal const& node) { return node.value; },
-      [](Ast_node::Plus const& node) {
-        return evaluate(*node.lhs) + evaluate(*node.rhs);
-      });
+int evaluate(ast_node::fat const& ast) {
+  if (auto ptr = fat_cast<ast_node::int_literal>(ast)) {
+    return ptr->value;
+  } else if (auto ptr = fat_cast<ast_node::plus>(ast)) {
+    return evaluate(*ptr->lhs) + evaluate(*ptr->rhs);
+  } else {
+    std::abort();
+  }
 }
 
 int main() {
-  auto ast = Ast_node::Plus(
-      std::make_unique<Ast_node::Int_literal>(1),
-      std::make_unique<Ast_node::Int_literal>(3));
+  // make certain we're actually calling the move constructor
+  // yay C++17 being sane!
+  auto ast = std::move(ast_node::fat(
+      ast_node::plus(ast_node::int_literal(10), ast_node::int_literal(20))));
   std::cout << evaluate(ast) << '\n';
-  utility::wait_until_enter();
 }
