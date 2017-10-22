@@ -39,6 +39,8 @@ LINKER_FLAGS = [
     "/NOLOGO",
 ]
 
+FILES = ["source/main.cpp", "source/ustd/utility.cpp"]
+
 
 def base_file_name(file):
     """
@@ -50,44 +52,49 @@ def base_file_name(file):
     return name
 
 
+def msvc():
+    compiler = PATH_TO_MSVC + "cl.exe"
+    linker = PATH_TO_MSVC + "link.exe"
+    obj_files = []
+    for file in FILES:
+        output_file = "build/" + base_file_name(file) + ".obj"
+        output = "/Fo" + output_file
+        list.append(obj_files, output_file)
+        res = call([compiler, *COMPILER_FLAGS, file, output])
+        if res != 0:
+            exit(res)
+    res = call([linker, *LINKER_FLAGS, *obj_files])
+    if res != 0:
+        exit(res)
+
+
+def clang():
+    compat_flags = ["-Xclang", "-flto-visibility-public-std"]
+    lang_flags = ["-Iinclude", "-std=c++17", "-c"]
+    warning_flags = ["-Wall", "-Wextra", "-pedantic",
+                     "-fno-ms-compatibility", "-fno-delayed-template-parsing"]
+    obj_files = []
+    for file in FILES:
+        output_file = "build/" + base_file_name(file) + ".o"
+        output = "-o" + output_file
+        list.append(obj_files, output_file)
+        res = call(
+            ["clang++", *compat_flags, *lang_flags, *warning_flags, file, output])
+        if res != 0:
+            exit(res)
+    res = call(["clang++", *obj_files, "-o", "main.exe"])
+    if res != 0:
+        exit(res)
+
+
 def main():
     """
     main function, to get pylint off my back about naming ;)
     """
-    files = ["source/main.cpp", "source/ustd/utility.cpp"]
     if not os.path.exists("build"):
         os.makedirs("build")
-    if False:
-        compiler = PATH_TO_MSVC + "cl.exe"
-        linker = PATH_TO_MSVC + "link.exe"
-        obj_files = []
-        for file in files:
-            output_file = "build/" + base_file_name(file) + ".obj"
-            output = "/Fo" + output_file
-            list.append(obj_files, output_file)
-            res = call([compiler, *COMPILER_FLAGS, file, output])
-            if res != 0:
-                exit(res)
-        res = call([linker, *LINKER_FLAGS, *obj_files])
-        if res != 0:
-            exit(res)
-    else:
-        compat_flags = ["-Xclang", "-flto-visibility-public-std"]
-        lang_flags = ["-Iinclude", "-std=c++17", "-c"]
-        warning_flags = ["-Wall", "-Wextra", "-pedantic",
-                         "-fno-ms-compatibility", "-fno-delayed-template-parsing"]
-        obj_files = []
-        for file in files:
-            output_file = "build/" + base_file_name(file) + ".o"
-            output = "-o" + output_file
-            list.append(obj_files, output_file)
-            res = call(
-                ["clang++", *compat_flags, *lang_flags, *warning_flags, file, output])
-            if res != 0:
-                exit(res)
-        res = call(["clang++", *obj_files, "-o", "main.exe"])
-        if res != 0:
-            exit(res)
+    msvc()
+    clang()
 
 
 if __name__ == "__main__":
