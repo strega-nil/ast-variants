@@ -57,7 +57,7 @@ def main():
     files = ["source/main.cpp", "source/ustd/utility.cpp"]
     if not os.path.exists("build"):
         os.makedirs("build")
-    if True:
+    if False:
         compiler = PATH_TO_MSVC + "cl.exe"
         linker = PATH_TO_MSVC + "link.exe"
         obj_files = []
@@ -74,7 +74,8 @@ def main():
     else:
         compat_flags = ["-Xclang", "-flto-visibility-public-std"]
         lang_flags = ["-Iinclude", "-std=c++17", "-c"]
-        warning_flags = ["-Wall", "-Wextra", "-pedantic"]
+        warning_flags = ["-Wall", "-Wextra", "-pedantic",
+                         "-fno-ms-compatibility", "-fno-delayed-template-parsing"]
         obj_files = []
         for file in files:
             output_file = "build/" + base_file_name(file) + ".o"
