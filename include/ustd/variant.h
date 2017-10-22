@@ -128,20 +128,35 @@ namespace variant {
     return helper<Type>(std::forward<Ts>(ts)...);
   }
 
-  // TODO(ubsan): actually add a fat variant
-  // NOTE(ubsan): should probably inherit from thin<Variant>
   template <typename Variant>
   struct fat {
     using tag_t = typename Variant::tag;
+    constexpr static auto size = type_traits::expand_type_list<
+        tag_list_types<make_tag_list<Variant>>, impl::max_size>::value;
+    constexpr static auto align = type_traits::expand_type_list<
+        tag_list_types<make_tag_list<Variant>>, impl::max_align>::value;
+
+    template <typename T>
+    fat(T t) : tag_(type_tag<Variant, T>()) {
+      new (&storage_) T(std::move(t));
+    }
+
+    fat() = delete;
+
+    // TODO(ubsan): implement the special member functions
+
+    fat(fat const& other) = delete;
+    fat& operator=(fat const&) & = delete;
+
+    tag_t tag() const { return tag_; }
+    void const* raw_storage() const {
+      return static_cast<void const*>(&storage_);
+    }
+    void* raw_storage() { return static_cast<void*>(&storage_); }
 
   private:
     tag_t tag_;
-    std::aligned_storage<
-        type_traits::expand_type_list<
-            tag_list_types<make_tag_list<Variant>>, impl::max_size>::value,
-        type_traits::expand_type_list<
-            tag_list_types<make_tag_list<Variant>>, impl::max_align>::value>
-        storage_;
+    std::aligned_storage_t<size, align> storage_;
   };
 
 } // namespace variant
@@ -165,6 +180,26 @@ constexpr Type* thin_cast(variant::thin<Variant>& x) {
   if (x.tag() == tag) {
     auto& tmp = static_cast<helper&>(x);
     return &tmp.value;
+  } else {
+    return nullptr;
+  }
+}
+
+template <typename Type, typename Variant>
+constexpr Type const* fat_cast(variant::fat<Variant> const& x) {
+  constexpr auto tag = variant::type_tag<Variant, Type>();
+  if (x.tag() == tag) {
+    return reinterpret_cast<Type const*>(x.raw_storage());
+  } else {
+    return nullptr;
+  }
+}
+
+template <typename Type, typename Variant>
+constexpr Type* fat_cast(variant::fat<Variant>& x) {
+  constexpr auto tag = variant::type_tag<Variant, Type>();
+  if (x.tag() == tag) {
+    return reinterpret_cast<Type*>(x.raw_storage());
   } else {
     return nullptr;
   }
