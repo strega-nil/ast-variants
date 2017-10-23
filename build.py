@@ -18,7 +18,8 @@ PATH_TO_KIT = "C:/Program Files (x86)/Windows Kits/10/"
 PATH_TO_MSVC = PATH_TO_TOOLS + "bin/HostX64/x64/"
 STDCXX_INCLUDES = PATH_TO_TOOLS + "include"
 STDC_INCLUDES = PATH_TO_KIT + "Include/" + KIT_VERSION + "ucrt"
-COMPILER_FLAGS = [
+
+MSVC_COMPILER_FLAGS = [
     "/I" + STDCXX_INCLUDES,
     "/I" + STDC_INCLUDES,
     "/Iinclude",
@@ -31,14 +32,30 @@ COMPILER_FLAGS = [
     "/wd4456",
     "/permissive-",
     "/DUSTD_MSVC_COMPATIBLE",
+    "/GR-",
 ]
-LINKER_FLAGS = [
+MSVC_LINKER_FLAGS = [
     "/LIBPATH:" + PATH_TO_TOOLS + "lib/x64/",
     "/LIBPATH:" + PATH_TO_TOOLS + "atlmfc/lib/x64/",
     "/LIBPATH:" + PATH_TO_VS + "Auxiliary/VS/lib/x64/",
     "/LIBPATH:" + PATH_TO_KIT + "Lib/" + KIT_VERSION + "ucrt/x64/",
     "/LIBPATH:" + PATH_TO_KIT + "Lib/" + KIT_VERSION + "um/x64/",
     "/NOLOGO",
+]
+
+CLANG_COMPILER_FLAGS = [
+    "-Xclang",
+    "-flto-visibility-public-std",
+    "-Iinclude",
+    "-std=c++17",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-fno-ms-compatibility",
+    "-fno-delayed-template-parsing",
+    "-fno-rtti",
+    "-D", "_HAS_STATIC_RTTI=0",
+    "-D", "USTD_STD_COMPATIBLE",
 ]
 
 FILES = ["source/main.cpp", "source/ast.cpp", "source/ustd/utility.cpp"]
@@ -62,26 +79,22 @@ def msvc():
         output_file = "build/" + base_file_name(file) + ".obj"
         output = "/Fo" + output_file
         list.append(obj_files, output_file)
-        res = call([compiler, *COMPILER_FLAGS, file, output])
+        res = call([compiler, *MSVC_COMPILER_FLAGS, file, output])
         if res != 0:
             exit(res)
-    res = call([linker, *LINKER_FLAGS, *obj_files])
+    res = call([linker, *MSVC_LINKER_FLAGS, *obj_files])
     if res != 0:
         exit(res)
 
 
 def clang():
-    compat_flags = ["-Xclang", "-flto-visibility-public-std"]
-    lang_flags = ["-Iinclude", "-std=c++17", "-c"]
-    warning_flags = ["-Wall", "-Wextra", "-pedantic",
-                     "-fno-ms-compatibility", "-fno-delayed-template-parsing", "-D", "USTD_STD_COMPATIBLE"]
     obj_files = []
     for file in FILES:
         output_file = "build/" + base_file_name(file) + ".o"
         output = "-o" + output_file
         list.append(obj_files, output_file)
         res = call(
-            ["clang++", *compat_flags, *lang_flags, *warning_flags, file, output])
+            ["clang++", "-c", *CLANG_COMPILER_FLAGS, file, output])
         if res != 0:
             exit(res)
     res = call(["clang++", *obj_files, "-o", "main.exe"])
