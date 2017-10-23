@@ -24,3 +24,5 @@ struct ast_node {
           rhs(thin::make_unique<U>(std::move(rhs))) {}
   };
 };
+
+variant_declare_extern_templates_noncopyable(ast_node);

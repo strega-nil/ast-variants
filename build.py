@@ -30,6 +30,7 @@ COMPILER_FLAGS = [
     "/wd4100",  # because msvc's template implementation is annoying
     "/wd4456",
     "/permissive-",
+    "/DUSTD_MSVC_COMPATIBLE",
 ]
 LINKER_FLAGS = [
     "/LIBPATH:" + PATH_TO_TOOLS + "lib/x64/",
@@ -40,7 +41,7 @@ LINKER_FLAGS = [
     "/NOLOGO",
 ]
 
-FILES = ["source/main.cpp", "source/ustd/utility.cpp"]
+FILES = ["source/main.cpp", "source/ast.cpp", "source/ustd/utility.cpp"]
 
 
 def base_file_name(file):
@@ -73,7 +74,7 @@ def clang():
     compat_flags = ["-Xclang", "-flto-visibility-public-std"]
     lang_flags = ["-Iinclude", "-std=c++17", "-c"]
     warning_flags = ["-Wall", "-Wextra", "-pedantic",
-                     "-fno-ms-compatibility", "-fno-delayed-template-parsing"]
+                     "-fno-ms-compatibility", "-fno-delayed-template-parsing", "-D", "USTD_STD_COMPATIBLE"]
     obj_files = []
     for file in FILES:
         output_file = "build/" + base_file_name(file) + ".o"
