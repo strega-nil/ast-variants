@@ -114,7 +114,7 @@ namespace variant {
   protected:
     virtual void thin_must_be_virtual_() = 0;
     tag_t tag_;
-    thin(tag_t tag_) : tag_(tag_) {}
+    constexpr thin(tag_t tag_) : tag_(tag_) {}
   };
 
   template <typename Variant>
@@ -124,7 +124,8 @@ namespace variant {
     Type value;
 
     template <typename... Ts>
-    helper(Ts&&... ts) : thin<Variant>(tag()), value(std::forward<Ts>(ts)...) {}
+    constexpr helper(Ts&&... ts)
+        : thin<Variant>(tag()), value(std::forward<Ts>(ts)...) {}
 
   protected:
     virtual void thin_must_be_virtual_() override {}
@@ -261,7 +262,7 @@ namespace variant {
     template <tag_t Tag>
     struct call_correct_function {
       template <typename F, typename... Fs>
-      static auto func(pointed_t& matchee, F&& f, Fs&&... fs) {
+      constexpr static auto func(pointed_t& matchee, F&& f, Fs&&... fs) {
         if constexpr (meta::is_callable_v<F, void(get_type<Tag>&)>) {
           return std::forward<F>(f)(
               static_cast<get_helper<Tag>&>(matchee).value);
@@ -272,10 +273,10 @@ namespace variant {
     };
 
   public:
-    matcher_thin(pointed_t& matchee) : pointer_(&matchee) {}
+    constexpr matcher_thin(pointed_t& matchee) : pointer_(&matchee) {}
 
     template <typename... Fs>
-    auto operator()(Fs&&... fs) {
+    constexpr auto operator()(Fs&&... fs) {
       return impl::tag_visit<tag_t, call_correct_function>(
           pointer_->tag(), *pointer_, std::forward<Fs>(fs)...);
     }
@@ -316,19 +317,19 @@ namespace variant {
   };
 
   template <typename T>
-  auto match(variant::thin<T>& matchee) {
+  constexpr auto match(variant::thin<T>& matchee) {
     return variant::matcher_thin<T>(matchee);
   }
   template <typename T>
-  auto match(variant::thin<T> const& matchee) {
+  constexpr auto match(variant::thin<T> const& matchee) {
     return variant::matcher_thin<T const>(matchee);
   }
   template <typename T>
-  auto match(variant::thin<T> volatile& matchee) {
+  constexpr auto match(variant::thin<T> volatile& matchee) {
     return variant::matcher_thin<T volatile>(matchee);
   }
   template <typename T>
-  auto match(variant::thin<T> const volatile& matchee) {
+  constexpr auto match(variant::thin<T> const volatile& matchee) {
     return variant::matcher_thin<T const volatile>(matchee);
   }
 
@@ -390,9 +391,13 @@ namespace variant {
   }
 
   template <typename Type, typename Variant>
-  constexpr void unsafe_get(thin<Variant> const volatile&& x) = delete;
+  void unsafe_get(thin<Variant> const&& x) = delete;
   template <typename Type, typename Variant>
-  constexpr void unsafe_get(fat<Variant> const volatile&& x) = delete;
+  void unsafe_get(fat<Variant> const&& x) = delete;
+  template <typename Type, typename Variant>
+  void unsafe_get(thin<Variant> const volatile&& x) = delete;
+  template <typename Type, typename Variant>
+  void unsafe_get(fat<Variant> const volatile&& x) = delete;
 
   template <typename Type, typename T>
   constexpr auto get(T&& x) -> decltype(unsafe_get<Type>(x)) {
@@ -434,7 +439,7 @@ constexpr static char const*                                                   \
 #ifdef USTD_MSVC_COMPATIBLE
 #define _variant_internal_extern_templates_nonmovable(xtrn, name)              \
   xtrn template constexpr name::tag ustd::variant::thin<name>::tag() const;    \
-  xtrn template ustd::variant::thin<name>::thin(tag_t tag_);                   \
+  xtrn template constexpr ustd::variant::thin<name>::thin(tag_t tag_);         \
                                                                                \
   xtrn template name::tag ustd::variant::fat<name>::tag() const;               \
   xtrn template void* ustd::variant::fat<name>::raw_storage();                 \
