@@ -27,6 +27,7 @@ COMPILER_FLAGS = [
     "/EHsc",
     "/nologo",
     "/W4",
+    "/wd4100",  # because msvc's template implementation is annoying
     "/wd4456",
     "/permissive-",
 ]
@@ -93,8 +94,8 @@ def main():
     """
     if not os.path.exists("build"):
         os.makedirs("build")
-    msvc()
     clang()
+    msvc()
 
 
 if __name__ == "__main__":

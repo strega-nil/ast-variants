@@ -5,13 +5,11 @@
 using namespace ustd;
 
 int evaluate(ast_node::thin const& ast) {
-  if (auto ptr = thin_cast<ast_node::int_literal>(ast)) {
-    return ptr->value;
-  } else if (auto ptr = thin_cast<ast_node::plus>(ast)) {
-    return evaluate(*ptr->lhs) + evaluate(*ptr->rhs);
-  } else {
-    std::abort();
-  }
+  return match(ast)(
+      [](ast_node::int_literal const& node) { return node.value; },
+      [](ast_node::plus const& node) {
+        return evaluate(*node.lhs) + evaluate(*node.rhs);
+      });
 }
 
 int evaluate(ast_node::fat const& ast) {
