@@ -97,7 +97,8 @@ namespace variant {
 
   template <typename Variant>
   struct thin {
-    using tag_t = typename Variant::tag;
+    using variant_t = Variant;
+    using tag_t = typename variant_t::tag;
 
     template <typename Type>
     struct helper;
@@ -165,24 +166,31 @@ namespace variant {
 
   template <typename Variant>
   struct fat {
-    using tag_t = typename Variant::tag;
+    using variant_t = Variant;
+    using tag_t = typename variant_t::tag;
     constexpr static auto size = meta::expand_type_list<
-        tag_list_types<make_tag_list<Variant>>, impl::max_size>::value;
+        tag_list_types<make_tag_list<variant_t>>, impl::max_size>::value;
     constexpr static auto align = meta::expand_type_list<
-        tag_list_types<make_tag_list<Variant>>, impl::max_align>::value;
+        tag_list_types<make_tag_list<variant_t>>, impl::max_align>::value;
 
     template <typename T>
-    fat(T t) : tag_(type_tag<Variant, T>()) {
+    fat(T t) : tag_(type_tag<variant_t, T>()) {
       new (&storage_) T(std::move(t));
     }
 
     fat() = delete;
 
     tag_t tag() const { return tag_; }
+    void* raw_storage() { return static_cast<void*>(&storage_); }
     void const* raw_storage() const {
       return static_cast<void const*>(&storage_);
     }
-    void* raw_storage() { return static_cast<void*>(&storage_); }
+    void volatile* raw_storage() volatile {
+      return static_cast<void volatile*>(&storage_);
+    }
+    void const volatile* raw_storage() const volatile {
+      return static_cast<void const volatile*>(&storage_);
+    }
 
   private:
     tag_t tag_;
@@ -191,19 +199,19 @@ namespace variant {
     template <tag_t tag>
     struct smf_helper {
       static void func(fat& self, fat const& other) {
-        using type = tag_type<Variant, tag>;
+        using type = tag_type<variant_t, tag>;
         new (&self.storage_)
             type(reinterpret_cast<type const&>(other.storage_));
       }
       static void func(fat& self, fat&& other) {
-        using type = tag_type<Variant, tag>;
+        using type = tag_type<variant_t, tag>;
         new (&self.storage_) type(reinterpret_cast<type&&>(other.storage_));
       }
     };
     template <tag_t tag>
     struct destructor_helper {
       static void func(fat& self) {
-        using type = tag_type<Variant, tag>;
+        using type = tag_type<variant_t, tag>;
         reinterpret_cast<type&>(self.storage_).~type();
       }
     };
@@ -273,47 +281,93 @@ namespace variant {
     }
   };
 
+  template <typename Variant>
+  class matcher_fat {
+    using tag_t = typename Variant::tag;
+    using variant_t = std::remove_cv_t<Variant>;
+    using fat_t = fat<variant_t>;
+    using pointed_t = meta::copy_cv_t<Variant, fat_t>;
+    pointed_t* pointer_;
+
+    template <tag_t Tag>
+    using get_type = meta::copy_cv_t<Variant, tag_type<variant_t, Tag>>;
+
+    template <tag_t Tag>
+    struct call_correct_function {
+      template <typename F, typename... Fs>
+      static auto func(pointed_t& matchee, F&& f, Fs&&... fs) {
+        if constexpr (meta::is_callable_v<F, void(get_type<Tag>&)>) {
+          return std::forward<F>(f)(
+              *reinterpret_cast<get_type<Tag>*>(matchee.raw_storage()));
+        } else {
+          return call_correct_function::func(matchee, std::forward<Fs>(fs)...);
+        }
+      }
+    };
+
+  public:
+    matcher_fat(pointed_t& matchee) : pointer_(&matchee) {}
+
+    template <typename... Fs>
+    auto operator()(Fs&&... fs) {
+      return impl::tag_visit<tag_t, call_correct_function>(
+          pointer_->tag(), *pointer_, std::forward<Fs>(fs)...);
+    }
+  };
+
 } // namespace variant
 
-template <typename Type, typename Variant>
-constexpr Type const* thin_cast(variant::thin<Variant> const& x) {
-  using helper = typename variant::thin<Variant>::template helper<Type>;
-  constexpr auto tag = variant::type_tag<Variant, Type>();
-  if (x.tag() == tag) {
-    auto const& tmp = static_cast<helper const&>(x);
-    return &tmp.value;
-  } else {
-    return nullptr;
-  }
+namespace impl {
+  template <typename Variant, typename Type>
+  using helper_type = typename variant::thin<Variant>::template helper<Type>;
 }
 
 template <typename Type, typename Variant>
-constexpr Type* thin_cast(variant::thin<Variant>& x) {
-  using helper = typename variant::thin<Variant>::template helper<Type>;
-  constexpr auto tag = variant::type_tag<Variant, Type>();
-  if (x.tag() == tag) {
-    auto& tmp = static_cast<helper&>(x);
-    return &tmp.value;
-  } else {
-    return nullptr;
-  }
+constexpr auto unsafe_variant_cast(variant::thin<Variant>& x) {
+  return &static_cast<impl::helper_type<Variant, Type>&>(x).value;
+}
+template <typename Type, typename Variant>
+constexpr auto unsafe_variant_cast(variant::thin<Variant> const& x) {
+  return &static_cast<impl::helper_type<Variant, Type> const&>(x).value;
+}
+template <typename Type, typename Variant>
+constexpr auto unsafe_variant_cast(variant::thin<Variant> volatile& x) {
+  return &static_cast<impl::helper_type<Variant, Type> volatile&>(x).value;
+}
+template <typename Type, typename Variant>
+constexpr auto unsafe_variant_cast(variant::thin<Variant> const volatile& x) {
+  auto&& tmp = static_cast<impl::helper_type<Variant, Type> const volatile&>(x);
+  return &tmp.value;
+}
+template <typename Type, typename Variant>
+constexpr auto unsafe_variant_cast(variant::fat<Variant>& x) {
+  return reinterpret_cast<Type*>(x.raw_storage());
+}
+template <typename Type, typename Variant>
+constexpr auto unsafe_variant_cast(variant::fat<Variant> const& x) {
+  return reinterpret_cast<Type const*>(x.raw_storage());
+}
+template <typename Type, typename Variant>
+constexpr auto unsafe_variant_cast(variant::fat<Variant> volatile& x) {
+  return reinterpret_cast<Type volatile*>(x.raw_storage());
+}
+template <typename Type, typename Variant>
+constexpr auto unsafe_variant_cast(variant::fat<Variant> const volatile& x) {
+  return reinterpret_cast<Type const volatile*>(x.raw_storage());
 }
 
 template <typename Type, typename Variant>
-constexpr Type const* fat_cast(variant::fat<Variant> const& x) {
-  constexpr auto tag = variant::type_tag<Variant, Type>();
-  if (x.tag() == tag) {
-    return reinterpret_cast<Type const*>(x.raw_storage());
-  } else {
-    return nullptr;
-  }
-}
-
+constexpr Type const volatile*
+unsafe_variant_cast(variant::thin<Variant> const volatile&& x) = delete;
 template <typename Type, typename Variant>
-constexpr Type* fat_cast(variant::fat<Variant>& x) {
-  constexpr auto tag = variant::type_tag<Variant, Type>();
-  if (x.tag() == tag) {
-    return reinterpret_cast<Type*>(x.raw_storage());
+constexpr Type const volatile*
+unsafe_variant_cast(variant::fat<Variant> const volatile&& x) = delete;
+
+template <typename Type, typename T>
+constexpr auto variant_cast(T&& x) -> decltype(unsafe_variant_cast<Type>(x)) {
+  using tag_t = variant::type_tag<typename std::decay_t<T>::variant_t, Type>;
+  if (x.tag() == tag_t()) {
+    return unsafe_variant_cast<Type>(std::forward<T>(x));
   } else {
     return nullptr;
   }
@@ -334,6 +388,23 @@ auto match(variant::thin<T> volatile& matchee) {
 template <typename T>
 auto match(variant::thin<T> const volatile& matchee) {
   return variant::matcher_thin<T const volatile>(matchee);
+}
+
+template <typename T>
+auto match(variant::fat<T>& matchee) {
+  return variant::matcher_fat<T>(matchee);
+}
+template <typename T>
+auto match(variant::fat<T> const& matchee) {
+  return variant::matcher_fat<T const>(matchee);
+}
+template <typename T>
+auto match(variant::fat<T> volatile& matchee) {
+  return variant::matcher_fat<T volatile>(matchee);
+}
+template <typename T>
+auto match(variant::fat<T> const volatile& matchee) {
+  return variant::matcher_fat<T const volatile>(matchee);
 }
 
 } // namespace ustd
