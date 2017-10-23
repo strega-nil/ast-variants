@@ -315,98 +315,96 @@ namespace variant {
     }
   };
 
-} // namespace variant
-
-namespace impl {
-  template <typename Variant, typename Type>
-  using helper_type = typename variant::thin<Variant>::template helper<Type>;
-}
-
-template <typename Type, typename Variant>
-constexpr auto unsafe_variant_cast(variant::thin<Variant>& x) {
-  return &static_cast<impl::helper_type<Variant, Type>&>(x).value;
-}
-template <typename Type, typename Variant>
-constexpr auto unsafe_variant_cast(variant::thin<Variant> const& x) {
-  return &static_cast<impl::helper_type<Variant, Type> const&>(x).value;
-}
-template <typename Type, typename Variant>
-constexpr auto unsafe_variant_cast(variant::thin<Variant> volatile& x) {
-  return &static_cast<impl::helper_type<Variant, Type> volatile&>(x).value;
-}
-template <typename Type, typename Variant>
-constexpr auto unsafe_variant_cast(variant::thin<Variant> const volatile& x) {
-  auto&& tmp = static_cast<impl::helper_type<Variant, Type> const volatile&>(x);
-  return &tmp.value;
-}
-template <typename Type, typename Variant>
-constexpr auto unsafe_variant_cast(variant::fat<Variant>& x) {
-  return reinterpret_cast<Type*>(x.raw_storage());
-}
-template <typename Type, typename Variant>
-constexpr auto unsafe_variant_cast(variant::fat<Variant> const& x) {
-  return reinterpret_cast<Type const*>(x.raw_storage());
-}
-template <typename Type, typename Variant>
-constexpr auto unsafe_variant_cast(variant::fat<Variant> volatile& x) {
-  return reinterpret_cast<Type volatile*>(x.raw_storage());
-}
-template <typename Type, typename Variant>
-constexpr auto unsafe_variant_cast(variant::fat<Variant> const volatile& x) {
-  return reinterpret_cast<Type const volatile*>(x.raw_storage());
-}
-
-template <typename Type, typename Variant>
-constexpr Type const volatile*
-unsafe_variant_cast(variant::thin<Variant> const volatile&& x) = delete;
-template <typename Type, typename Variant>
-constexpr Type const volatile*
-unsafe_variant_cast(variant::fat<Variant> const volatile&& x) = delete;
-
-template <typename Type, typename T>
-constexpr auto variant_cast(T&& x) -> decltype(unsafe_variant_cast<Type>(x)) {
-  using tag_t = variant::type_tag<typename std::decay_t<T>::variant_t, Type>;
-  if (x.tag() == tag_t()) {
-    return unsafe_variant_cast<Type>(std::forward<T>(x));
-  } else {
-    return nullptr;
+  template <typename T>
+  auto match(variant::thin<T>& matchee) {
+    return variant::matcher_thin<T>(matchee);
   }
-}
+  template <typename T>
+  auto match(variant::thin<T> const& matchee) {
+    return variant::matcher_thin<T const>(matchee);
+  }
+  template <typename T>
+  auto match(variant::thin<T> volatile& matchee) {
+    return variant::matcher_thin<T volatile>(matchee);
+  }
+  template <typename T>
+  auto match(variant::thin<T> const volatile& matchee) {
+    return variant::matcher_thin<T const volatile>(matchee);
+  }
 
-template <typename T>
-auto match(variant::thin<T>& matchee) {
-  return variant::matcher_thin<T>(matchee);
-}
-template <typename T>
-auto match(variant::thin<T> const& matchee) {
-  return variant::matcher_thin<T const>(matchee);
-}
-template <typename T>
-auto match(variant::thin<T> volatile& matchee) {
-  return variant::matcher_thin<T volatile>(matchee);
-}
-template <typename T>
-auto match(variant::thin<T> const volatile& matchee) {
-  return variant::matcher_thin<T const volatile>(matchee);
-}
+  template <typename T>
+  auto match(variant::fat<T>& matchee) {
+    return variant::matcher_fat<T>(matchee);
+  }
+  template <typename T>
+  auto match(variant::fat<T> const& matchee) {
+    return variant::matcher_fat<T const>(matchee);
+  }
+  template <typename T>
+  auto match(variant::fat<T> volatile& matchee) {
+    return variant::matcher_fat<T volatile>(matchee);
+  }
+  template <typename T>
+  auto match(variant::fat<T> const volatile& matchee) {
+    return variant::matcher_fat<T const volatile>(matchee);
+  }
 
-template <typename T>
-auto match(variant::fat<T>& matchee) {
-  return variant::matcher_fat<T>(matchee);
-}
-template <typename T>
-auto match(variant::fat<T> const& matchee) {
-  return variant::matcher_fat<T const>(matchee);
-}
-template <typename T>
-auto match(variant::fat<T> volatile& matchee) {
-  return variant::matcher_fat<T volatile>(matchee);
-}
-template <typename T>
-auto match(variant::fat<T> const volatile& matchee) {
-  return variant::matcher_fat<T const volatile>(matchee);
-}
+  namespace impl {
+    template <typename Variant, typename Type>
+    using thin_helper = typename variant::thin<Variant>::template helper<Type>;
+  }
 
+  template <typename Type, typename Variant>
+  constexpr auto unsafe_get(thin<Variant>& x) {
+    return &static_cast<impl::thin_helper<Variant, Type>&>(x).value;
+  }
+  template <typename Type, typename Variant>
+  constexpr auto unsafe_get(thin<Variant> const& x) {
+    return &static_cast<impl::thin_helper<Variant, Type> const&>(x).value;
+  }
+  template <typename Type, typename Variant>
+  constexpr auto unsafe_get(thin<Variant> volatile& x) {
+    return &static_cast<impl::thin_helper<Variant, Type> volatile&>(x).value;
+  }
+  template <typename Type, typename Variant>
+  constexpr auto unsafe_get(thin<Variant> const volatile& x) {
+    auto&& tmp =
+        static_cast<impl::thin_helper<Variant, Type> const volatile&>(x);
+    return &tmp.value;
+  }
+  template <typename Type, typename Variant>
+  auto unsafe_get(fat<Variant>& x) {
+    return reinterpret_cast<Type*>(x.raw_storage());
+  }
+  template <typename Type, typename Variant>
+  auto unsafe_get(fat<Variant> const& x) {
+    return reinterpret_cast<Type const*>(x.raw_storage());
+  }
+  template <typename Type, typename Variant>
+  auto unsafe_get(fat<Variant> volatile& x) {
+    return reinterpret_cast<Type volatile*>(x.raw_storage());
+  }
+  template <typename Type, typename Variant>
+  auto unsafe_get(fat<Variant> const volatile& x) {
+    return reinterpret_cast<Type const volatile*>(x.raw_storage());
+  }
+
+  template <typename Type, typename Variant>
+  constexpr void unsafe_get(thin<Variant> const volatile&& x) = delete;
+  template <typename Type, typename Variant>
+  constexpr void unsafe_get(fat<Variant> const volatile&& x) = delete;
+
+  template <typename Type, typename T>
+  constexpr auto get(T&& x) -> decltype(unsafe_get<Type>(x)) {
+    using tag_t = type_tag<typename std::decay_t<T>::variant_t, Type>;
+    if (x.tag() == tag_t()) {
+      return unsafe_get<Type>(std::forward<T>(x));
+    } else {
+      return nullptr;
+    }
+  }
+
+} // namespace variant
 } // namespace ustd
 
 #define declare_variant(name, ...)                                             \

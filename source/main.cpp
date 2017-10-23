@@ -22,9 +22,9 @@ int evaluate(ast_node::fat const& ast) {
 }
 #else
 int evaluate(ast_node::thin const& ast) {
-  if (auto ptr = variant_cast<ast_node::int_literal>(ast)) {
+  if (auto ptr = variant::get<ast_node::int_literal>(ast)) {
     return ptr->value;
-  } else if (auto ptr = variant_cast<ast_node::plus>(ast)) {
+  } else if (auto ptr = variant::get<ast_node::plus>(ast)) {
     return evaluate(*ptr->lhs) + evaluate(*ptr->rhs);
   } else {
     std::abort();
@@ -32,9 +32,9 @@ int evaluate(ast_node::thin const& ast) {
 }
 
 int evaluate(ast_node::fat const& ast) {
-  if (auto ptr = variant_cast<ast_node::int_literal>(ast)) {
+  if (auto ptr = variant::get<ast_node::int_literal>(ast)) {
     return ptr->value;
-  } else if (auto ptr = variant_cast<ast_node::plus>(ast)) {
+  } else if (auto ptr = variant::get<ast_node::plus>(ast)) {
     return evaluate(*ptr->lhs) + evaluate(*ptr->rhs);
   } else {
     std::abort();
