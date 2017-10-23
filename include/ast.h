@@ -25,4 +25,7 @@ struct ast_node {
   };
 };
 
+int evaluate(ast_node::thin const& ast);
+int evaluate(ast_node::fat const& ast);
+
 variant_declare_extern_templates_noncopyable(ast_node);
