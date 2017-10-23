@@ -82,7 +82,8 @@ def msvc():
         res = call([compiler, *MSVC_COMPILER_FLAGS, file, output])
         if res != 0:
             exit(res)
-    res = call([linker, *MSVC_LINKER_FLAGS, *obj_files])
+    res = call([linker, "/OUT:ast-msvc.exe", *MSVC_LINKER_FLAGS,
+                *obj_files])
     if res != 0:
         exit(res)
 
@@ -97,7 +98,7 @@ def clang():
             ["clang++", "-c", *CLANG_COMPILER_FLAGS, file, output])
         if res != 0:
             exit(res)
-    res = call(["clang++", *obj_files, "-o", "main.exe"])
+    res = call(["clang++", *obj_files, "-o", "ast-clang.exe"])
     if res != 0:
         exit(res)
 
