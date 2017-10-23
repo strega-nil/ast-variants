@@ -8,7 +8,7 @@ namespace utility {
 } // namespace utility
 
 template <typename T, typename U>
-T the(U&& u) {
+constexpr T the(U&& u) {
   return std::forward<U>(u);
 }
 
