@@ -120,7 +120,7 @@ namespace variant {
   template <typename Variant>
   template <typename Type>
   struct thin<Variant>::helper : thin<Variant> {
-    using tag = type_tag<Variant, Type>;
+    using variant_tag = type_tag<Variant, Type>;
     Type value;
 
     template <typename... Ts>
@@ -267,6 +267,7 @@ namespace variant {
           return std::forward<F>(f)(
               static_cast<get_helper<Tag>&>(matchee).value);
         } else {
+          static_assert(sizeof...(Fs) > 0, "inexhaustive match");
           return call_correct_function::func(matchee, std::forward<Fs>(fs)...);
         }
       }
@@ -301,6 +302,7 @@ namespace variant {
           return std::forward<F>(f)(
               *reinterpret_cast<get_type<Tag>*>(matchee.raw_storage()));
         } else {
+          static_assert(sizeof...(Fs) > 0, "inexhaustive match");
           return call_correct_function::func(matchee, std::forward<Fs>(fs)...);
         }
       }
