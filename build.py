@@ -58,7 +58,7 @@ CLANG_COMPILER_FLAGS = [
     "-D", "USTD_STD_COMPATIBLE",
 ]
 
-FILES = ["source/main.cpp", "source/ast.cpp", "source/ustd/utility.cpp"]
+FILES = ["source/main.cpp"]
 
 
 def base_file_name(file):

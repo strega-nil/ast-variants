@@ -24,6 +24,3 @@ struct ast_node {
           rhs(thin::make_unique<U>(std::move(rhs))) {}
   };
 };
-
-int evaluate(ast_node::thin const& ast);
-int evaluate(ast_node::fat const& ast);
