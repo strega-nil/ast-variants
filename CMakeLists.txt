@@ -18,4 +18,4 @@ else()
     )
 endif()
 
-add_executable(ast source/main.cpp)
+add_executable(ast source/main.cpp source/lambda.cpp)
